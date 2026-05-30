@@ -1,4 +1,5 @@
 import os
+import re
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -14,27 +15,54 @@ FEEDS = {
     "🦷 口腔医学 (Reddit Dentistry)": "https://www.reddit.com/r/Dentistry/.rss",
     "🩺 综合医学 (Reddit Medicine)": "https://www.reddit.com/r/medicine/.rss",
     "🤖 AI 与人工智能 (Reddit MachineLearning)": "https://www.reddit.com/r/MachineLearning/.rss",
-    "💻 科技与编程前沿 (Hacker News)": "https://news.ycombinator.com/rss"
+    "💻 科技与编程前沿 (Hacker News)": "https://news.ycombinator.com/rss",
+    "👗 时尚与潮流 (Reddit Fashion)": "https://www.reddit.com/r/fashion/.rss"
 }
+
+def clean_html_and_text(raw_html):
+    """去除 HTML 标签并清理无用文本"""
+    # 移除 HTML 标签
+    cleanr = re.compile('<.*?>')
+    text = re.sub(cleanr, '', raw_html)
+    # Reddit 的摘要里经常包含 "submitted by" 或 "[link] [comments]"，我们简单清理一下
+    text = text.replace("[link]", "").replace("[comments]", "").strip()
+    return text
 
 def fetch_news():
     """抓取 RSS 源的信息并生成 HTML 格式的内容"""
-    html_content = "<h2>今日前沿资讯推送 🚀</h2>"
+    html_content = "<div style='font-family: sans-serif;'>"
+    html_content += "<h2>今日前沿资讯推送 🚀</h2>"
     
     for category, url in FEEDS.items():
-        html_content += f"<h3>{category}</h3><ul>"
+        html_content += f"<h3 style='color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;'>{category}</h3><ul style='list-style-type: none; padding-left: 0;'>"
         try:
             feed = feedparser.parse(url)
-            # 每个分类只取前 5 条最新信息，避免邮件太长
+            # 每个分类只取前 5 条最新信息
             for entry in feed.entries[:5]:
                 title = entry.title
                 link = entry.link
-                html_content += f"<li><a href='{link}'>{title}</a></li>"
+                
+                # 尝试提取文章的 summary 或 description
+                summary = getattr(entry, 'summary', getattr(entry, 'description', ''))
+                clean_summary = clean_html_and_text(summary)
+                
+                # 截取前 150 个字符作为摘要
+                if len(clean_summary) > 150:
+                    clean_summary = clean_summary[:150] + "..."
+                elif len(clean_summary) == 0:
+                    clean_summary = "暂无内容摘要。"
+                    
+                # 组装这篇帖子的 HTML
+                html_content += f"<li style='margin-bottom: 18px;'>"
+                html_content += f"<a href='{link}' style='font-size: 16px; font-weight: bold; text-decoration: none; color: #1a0dab;'>{title}</a>"
+                html_content += f"<div style='font-size: 13px; color: #666; margin-top: 4px; line-height: 1.5;'>{clean_summary}</div>"
+                html_content += f"</li>"
         except Exception as e:
             html_content += f"<li>获取失败: {e}</li>"
         html_content += "</ul>"
         
-    html_content += "<p><br>由你的专属 GitHub Actions 机器人自动发送 🤖</p>"
+    html_content += "<p style='color: #999; font-size: 12px; text-align: center; margin-top: 30px;'>由你的专属 GitHub Actions 机器人自动发送 🤖</p>"
+    html_content += "</div>"
     return html_content
 
 def send_email(content):
