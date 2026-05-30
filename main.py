@@ -4,6 +4,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import feedparser
+from deep_translator import GoogleTranslator
 
 # 从 GitHub Secrets 中读取你的账号信息
 QQ_EMAIL = os.environ.get("QQ_EMAIL")
@@ -33,6 +34,9 @@ def fetch_news():
     html_content = "<div style='font-family: sans-serif;'>"
     html_content += "<h2>今日前沿资讯推送 🚀</h2>"
     
+    # 初始化谷歌翻译器
+    translator = GoogleTranslator(source='auto', target='zh-CN')
+    
     for category, url in FEEDS.items():
         html_content += f"<h3 style='color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px;'>{category}</h3><ul style='list-style-type: none; padding-left: 0;'>"
         try:
@@ -52,10 +56,20 @@ def fetch_news():
                 elif len(clean_summary) == 0:
                     clean_summary = "暂无内容摘要。"
                     
+                # 对摘要进行中文翻译
+                zh_summary = ""
+                if clean_summary != "暂无内容摘要。":
+                    try:
+                        zh_summary = translator.translate(clean_summary)
+                    except Exception:
+                        zh_summary = "（翻译超时或失败）"
+                    
                 # 组装这篇帖子的 HTML
                 html_content += f"<li style='margin-bottom: 18px;'>"
                 html_content += f"<a href='{link}' style='font-size: 16px; font-weight: bold; text-decoration: none; color: #1a0dab;'>{title}</a>"
                 html_content += f"<div style='font-size: 13px; color: #666; margin-top: 4px; line-height: 1.5;'>{clean_summary}</div>"
+                if zh_summary:
+                    html_content += f"<div style='font-size: 13px; color: #2e7d32; margin-top: 2px; line-height: 1.5;'><strong>🇨🇳 中文翻译：</strong>{zh_summary}</div>"
                 html_content += f"</li>"
         except Exception as e:
             html_content += f"<li>获取失败: {e}</li>"
