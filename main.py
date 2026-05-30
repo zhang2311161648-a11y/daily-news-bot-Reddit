@@ -52,25 +52,20 @@ def send_email(content):
         print("👉 请检查 GitHub 仓库的 Settings -> Secrets and variables -> Actions 中是否正确配置了这两个 Secret。")
         return
 
+    # 清除可能不小心多加的空格
+    QQ_EMAIL = QQ_EMAIL.strip()
+    QQ_AUTH_CODE = QQ_AUTH_CODE.strip()
+
     try:
-        # 尝试使用 SSL (端口 465)
         print(f"正在尝试连接 QQ 邮箱服务器... (发件人: {QQ_EMAIL})")
-        server = smtplib.SMTP_SSL("smtp.qq.com", 465, timeout=10)
+        server = smtplib.SMTP_SSL("smtp.qq.com", 465, timeout=15)
+        server.set_debuglevel(1) # 开启调试输出，打印所有网络交互细节
+        print("✅ 连接成功，准备登录...")
         server.login(QQ_EMAIL, QQ_AUTH_CODE)
+        print("✅ 登录成功，准备发送...")
         server.sendmail(QQ_EMAIL, RECEIVER_EMAIL, msg.as_string())
         server.quit()
         print("✅ 邮件发送成功！请检查你的邮箱。")
-    except smtplib.SMTPServerDisconnected:
-        print("⚠️ 端口 465 连接断开，尝试使用端口 587 (STARTTLS)...")
-        try:
-            server = smtplib.SMTP("smtp.qq.com", 587, timeout=10)
-            server.starttls()
-            server.login(QQ_EMAIL, QQ_AUTH_CODE)
-            server.sendmail(QQ_EMAIL, RECEIVER_EMAIL, msg.as_string())
-            server.quit()
-            print("✅ 邮件发送成功！(通过端口 587)")
-        except Exception as e2:
-            print(f"❌ 邮件发送彻底失败: {e2}")
     except Exception as e:
         print(f"❌ 邮件发送失败: {e}")
 
