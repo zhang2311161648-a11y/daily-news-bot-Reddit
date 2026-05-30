@@ -39,31 +39,30 @@ def fetch_news():
 
 def send_email(content):
     """通过 QQ 邮箱的 SMTP 发送邮件"""
+    if not QQ_EMAIL or not QQ_AUTH_CODE:
+        print("❌ 致命错误：未获取到 QQ_EMAIL 或 QQ_AUTH_CODE！")
+        return
+
+    # 清除可能多加的空格，并存入局部变量
+    clean_qq_email = QQ_EMAIL.strip()
+    clean_qq_auth_code = QQ_AUTH_CODE.strip()
+
     msg = MIMEMultipart()
-    msg['From'] = QQ_EMAIL
+    msg['From'] = clean_qq_email
     msg['To'] = RECEIVER_EMAIL
     msg['Subject'] = "【每日定制资讯】医学 / 口腔 / AI前沿"
 
     # 将内容附加为 HTML 格式
     msg.attach(MIMEText(content, 'html', 'utf-8'))
 
-    if not QQ_EMAIL or not QQ_AUTH_CODE:
-        print("❌ 致命错误：未获取到 QQ_EMAIL 或 QQ_AUTH_CODE！")
-        print("👉 请检查 GitHub 仓库的 Settings -> Secrets and variables -> Actions 中是否正确配置了这两个 Secret。")
-        return
-
-    # 清除可能不小心多加的空格
-    QQ_EMAIL = QQ_EMAIL.strip()
-    QQ_AUTH_CODE = QQ_AUTH_CODE.strip()
-
     try:
-        print(f"正在尝试连接 QQ 邮箱服务器... (发件人: {QQ_EMAIL})")
+        print(f"正在尝试连接 QQ 邮箱服务器... (发件人: {clean_qq_email})")
         server = smtplib.SMTP_SSL("smtp.qq.com", 465, timeout=15)
-        server.set_debuglevel(1) # 开启调试输出，打印所有网络交互细节
+        server.set_debuglevel(1) # 开启调试输出
         print("✅ 连接成功，准备登录...")
-        server.login(QQ_EMAIL, QQ_AUTH_CODE)
+        server.login(clean_qq_email, clean_qq_auth_code)
         print("✅ 登录成功，准备发送...")
-        server.sendmail(QQ_EMAIL, RECEIVER_EMAIL, msg.as_string())
+        server.sendmail(clean_qq_email, RECEIVER_EMAIL, msg.as_string())
         server.quit()
         print("✅ 邮件发送成功！请检查你的邮箱。")
     except Exception as e:
